@@ -1,11 +1,18 @@
 package net.gingz.sunshine;
 
 import android.content.pm.FeatureGroupInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -29,6 +36,34 @@ public class ForecastFragment extends Fragment {
     ArrayAdapter<String> mForecastAdapter;
 
     public ForecastFragment() {
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        inflater.inflate(R.menu.forecastfragment, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        switch (item.getItemId()) {
+            case R.id.action_refresh:
+                FetchWeatherTask refreshTask = new FetchWeatherTask();
+                refreshTask.execute("94043");
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     @Override
@@ -60,11 +95,11 @@ public class ForecastFragment extends Fragment {
         return rootView;
     }
 
-    public class FetchWeatherTask extends AsyncTask<Void, Void, Void> {
+    public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
         private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
 
         @Override
-        protected Void doInBackground(Void... params) {
+        protected Void doInBackground(String ... params) {
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
@@ -73,11 +108,42 @@ public class ForecastFragment extends Fragment {
             // Will contain the raw JSON response as a string.
             String forecastJsonStr = null;
 
+            String zipCode = params[0];
+            String units = "metric";
+            int numDays = 7;
+
+            //REMEMBER TO ENTER API KEY HERE BEFORE YOU RUN
+            String appId = "< ENTER KEY >";
+
             try {
                 // Construct the URL for the OpenWeatherMap query
                 // Possible parameters are available at OWM's forecast API page, at
                 // http://openweathermap.org/API#forecast
-                URL url = new URL("http://api.openweathermap.org/data/2.5/forecast/daily?q=94043&mode=json&units=metric&cnt=7");
+                final String ZIPCODE_PARAM = "zip";
+                final String UNITS_PARAM = "units";
+                final String DAYS_PARAM = "cnt";
+                final String APPID_PARAM = "appid";
+
+                Uri.Builder urlTest = new Uri.Builder();
+
+                urlTest.scheme("http");
+                urlTest.authority("api.openweathermap.org");
+                urlTest.appendPath("data");
+                urlTest.appendPath("2.5");
+                urlTest.appendPath("forecast");
+                urlTest.appendPath("daily");
+                urlTest.appendQueryParameter(ZIPCODE_PARAM, zipCode);
+                urlTest.appendQueryParameter(UNITS_PARAM, units);
+                urlTest.appendQueryParameter(DAYS_PARAM, Integer.toString(numDays));
+                urlTest.appendQueryParameter(APPID_PARAM, appId);
+
+                //Log.v(LOG_TAG, "URI BUILDER looks like: " + urlTest);
+
+
+
+                URL url = new URL(urlTest.toString());
+
+                Log.v(LOG_TAG, "URI BUILDER looks like: " + urlTest.toString());
 
                 // Create the request to OpenWeatherMap, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();
@@ -106,6 +172,7 @@ public class ForecastFragment extends Fragment {
                     forecastJsonStr = null;
                 }
                 forecastJsonStr = buffer.toString();
+                Log.v(LOG_TAG, "Forecast JSON String: " + forecastJsonStr);
 
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error ", e);
